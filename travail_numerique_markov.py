@@ -7,119 +7,108 @@ import time
 
 '''Chaînes de Markov absorbantes'''
 
-noeuds_r = 5
-noeuds_z = 9
-matrice_noeuds = -150*np.ones((noeuds_r, noeuds_z))
+n_noeuds_r = 5
+n_noeuds_z = 9
+matrice_noeuds = -150*np.ones((n_noeuds_r, n_noeuds_z))
 
-'''
-OK
-'''
+
+
 def applique_CF_aplatie(chambre_plate, r, z):
 
-    chambre = chambre_plate.reshape(5, 9)
+    chambre = chambre_plate.reshape(r, z)
 
     # Conditions frontières
-    CF_cote_lignenoir = (-300*np.ones(z-2))
-    CF_electr_centre = np.zeros(z-3)
+    CF_cote_lignenoir = (-300*np.ones(z-(r//2)))
+    CF_electr_centre = np.zeros(z-((r//2)+1))
     CF_base_bleu = np.zeros(r)
+    CF_electr_centre = np.zeros(int(5*z/9))
     
-    chambre[0,0:2] = np.zeros(2)
-    chambre[r-1,0:2] = np.zeros(2)
-    chambre[0,2:] = CF_cote_lignenoir
-    chambre[1,0:2] = np.array([0, -300])
-    chambre[r-2,0:2] = np.array([0, -300])
-    chambre[2,0] = -300
-    chambre[2,3:] = CF_electr_centre
-    chambre[r-1,2:] = CF_cote_lignenoir
+    # chambre[0,0:2] = np.zeros(2)
+    # chambre[r-1,0:2] = np.zeros(2)
+    # chambre[0,2:] = CF_cote_lignenoir
+    # chambre[1,0:2] = np.array([0, -300])
+    # chambre[r-2,0:2] = np.array([0, -300])
+    # chambre[2,0] = -300
+    # chambre[2,3:] = CF_electr_centre
+    # chambre[r-1,2:] = CF_cote_lignenoir
+
+    # Pour l'électrode du centre
+    chambre[(r//2), int(4*z/9):] = CF_electr_centre
+
+    # Pour les côtés de la chambre
+    CF_cote_lignenoir = (-300*np.ones(z-(r//2)))
+    chambre[0, (r//2):] = CF_cote_lignenoir
+    chambre[r-1, (r//2):] = CF_cote_lignenoir
+
+    # Pour la base de la chambre
     chambre[:,z-1] = CF_base_bleu
+    # Pour l'extérieur de la chambre
+    for ligne in range(1, (r//2)+1):
+        chambre[ligne-1, :((r//2)+1) - ligne] = 0
+        chambre[-1*ligne, :((r//2)+1) - ligne] = 0
+    # Pour les côtés diagonaux
+    for ligne in range(1, (r//2)+1):
+        chambre[ligne-1, ((r//2)+1) - ligne] = -300
+        chambre[-1*ligne, ((r//2)+1) - ligne] = -300
+    chambre[(r//2), 0] = -300
 
     chambre_vide_aplatie = np.ravel(chambre)
 
     return chambre_vide_aplatie
 
 
+chambre = applique_CF_aplatie(matrice_noeuds, n_noeuds_r, n_noeuds_z)
 
-chambre = applique_CF_aplatie(matrice_noeuds, noeuds_r, noeuds_z)
-Vci = applique_CF_aplatie(matrice_noeuds, noeuds_r, noeuds_z)
 print(chambre)
 
-'''
-OK
-'''
-x = 5
-y = 9
-P = np.zeros((x*y, x*y))
-'''
-OK
-'''
+
+
+
 # Créer la matrice de probabilitées P
-# La nième ligne de la matrice correspond aux possibilitées de transitionner vers les noeuds voisins du noeud n
+# La nième ligne de la matrice correspond aux probabilitées de transitionner vers les noeuds voisins du noeud n
+P = np.zeros((n_noeuds_r*n_noeuds_z, n_noeuds_r*n_noeuds_z))
 
-
-# for i in range(12, 18):
-#     P[i, i-1] = 0.25
-#     P[i, i+1] = 0.25
-#     P[i, i-9] = 0.25
-#     P[i, i+9] = 0.25
-# for i in range(20, 22):
-#     P[i, i-1] = 0.25
-#     P[i, i+1] = 0.25
-#     P[i, i-9] = 0.25
-#     P[i, i+9] = 0.25
-# for i in range(30, 35):
-#     P[i, i-1] = 0.25
-#     P[i, i+1] = 0.25
-#     P[i, i-9] = 0.25
-#     P[i, i+9] = 0.25
-
-
-# for i in range(12):
-#     P[i,i] = 1
-# for i in range(18, 20):
-#     P[i,i] = 1
-# for i in range(22, 30):
-#     P[i,i] = 1
-# for i in range(36, 45):
-#     P[i,i] = 1
-
-for i in range(len(Vci)):
-    if Vci[i] == 0 or Vci[i] == -300: #ajoute une valeur de 1 à tous les noeuds fixes 
+for i in range(len(chambre)):
+    # Pour un noeud fixe, P[i, i] = 1 (il est certain que le noeud conserve le même potentiel)
+    if chambre[i] == 0 or chambre[i] == -300:
         P[i,i] = 1
-    else: #ajoute une valeur de 25% à tous les noeuds adjacents aux noeuds variables
+    # Pour un noeud libre, il est relié à 4 noeuds : la possibilité de transitionner sur ces derniers est de 25% chacun
+    else:
         P[i, i-1] = 0.25
         P[i, i+1] = 0.25
-        # if i - x >= 0:
         P[i, i-9] = 0.25
         P[i, i+9] = 0.25
-        # else: #si le noeud est situé à l'extrémité supérieure, la valeur associée au noeud supérieur est ajouté au noeud inférieur
-        #     P[i,i+x] = 0.5
+
+# Montrer la matrice de probabilitées
+plt.imshow(P, cmap='viridis')
+plt.colorbar(label='Probabilité')
+plt.title('Probabilité')
+plt.show()
 
 
 
-def graphique(matrice):
-
-    # Créer le graphique
-    plt.imshow(matrice, cmap='viridis')
-    plt.colorbar(label='Potentiel')
-    plt.title('Potentiel')
-    plt.xlabel('z')
-    plt.ylabel('r')
-    plt.show()
-
-graphique(P)
-
-
-
+# Multiplier la matrice de probabilités de transition par les conditions initiales de la chambre ayant été vectorisée
 def chaines_de_Markov(chambre):
     matrice_precedante= chambre.flatten()
-    for fois in range(20):
+    for fois in range(500):
         matrice_suivante = np.dot(P, matrice_precedante)
         matrice_precedante = matrice_suivante
-    chambre_pleine = matrice_precedante.reshape(x, y)
+    chambre_pleine = matrice_precedante.reshape(n_noeuds_r, n_noeuds_z)
     return chambre_pleine
 
-chambre_finale = chaines_de_Markov(Vci)
-graphique(chambre_finale)
+# La chambre a ionisation contenant le potentiel final
+chambre_finale = chaines_de_Markov(chambre)
+
+
+# Créer le graphique
+plt.imshow(chambre_finale, cmap='viridis', origin='upper', extent=(12,0,-3,3))
+plt.colorbar(label='Potentiel')
+plt.title('Potentiel')
+plt.xlabel('z')
+plt.ylabel('r')
+plt.show()
+
+
 
 
 

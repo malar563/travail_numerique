@@ -4,7 +4,12 @@ import matplotlib.pyplot as plt
 import time
 
 
+'''
+Méthode de relaxation et de sur-relaxation
+'''
 
+
+"Initialisation de la chambre à ionisation"
 # Initialiser la chambre à ionisation : 
 # dimensions de 12mm x 3mm pour une moitié (symétrie en ϕ)
 # Un pas de 0,1mm
