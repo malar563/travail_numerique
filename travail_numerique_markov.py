@@ -7,12 +7,15 @@ import time
 
 '''Chaînes de Markov absorbantes'''
 
+# Initialiser la chambre avec les dimensions spécifiées
 n_noeuds_r = 5
 n_noeuds_z = 9
 matrice_noeuds = -150*np.ones((n_noeuds_r, n_noeuds_z))
 
 
-
+# Appliquer les CF à la chambre 
+# La matrice en entrée est aplatie ou non
+# On retourne une matrice aplatie (vectorisée)
 def applique_CF_aplatie(chambre_plate, r, z):
 
     chambre = chambre_plate.reshape(r, z)
@@ -22,15 +25,6 @@ def applique_CF_aplatie(chambre_plate, r, z):
     CF_electr_centre = np.zeros(z-((r//2)+1))
     CF_base_bleu = np.zeros(r)
     CF_electr_centre = np.zeros(int(5*z/9))
-    
-    # chambre[0,0:2] = np.zeros(2)
-    # chambre[r-1,0:2] = np.zeros(2)
-    # chambre[0,2:] = CF_cote_lignenoir
-    # chambre[1,0:2] = np.array([0, -300])
-    # chambre[r-2,0:2] = np.array([0, -300])
-    # chambre[2,0] = -300
-    # chambre[2,3:] = CF_electr_centre
-    # chambre[r-1,2:] = CF_cote_lignenoir
 
     # Pour l'électrode du centre
     chambre[(r//2), int(4*z/9):] = CF_electr_centre
@@ -56,10 +50,11 @@ def applique_CF_aplatie(chambre_plate, r, z):
 
     return chambre_vide_aplatie
 
+# Appliquer les conditions initiales à la chambre
+chambre_plate = applique_CF_aplatie(matrice_noeuds, n_noeuds_r, n_noeuds_z)
 
-chambre = applique_CF_aplatie(matrice_noeuds, n_noeuds_r, n_noeuds_z)
 
-print(chambre)
+# print(chambre_plate)
 
 
 
@@ -68,16 +63,16 @@ print(chambre)
 # La nième ligne de la matrice correspond aux probabilitées de transitionner vers les noeuds voisins du noeud n
 P = np.zeros((n_noeuds_r*n_noeuds_z, n_noeuds_r*n_noeuds_z))
 
-for i in range(len(chambre)):
+for i in range(len(chambre_plate)):
     # Pour un noeud fixe, P[i, i] = 1 (il est certain que le noeud conserve le même potentiel)
-    if chambre[i] == 0 or chambre[i] == -300:
+    if chambre_plate[i] == 0 or chambre_plate[i] == -300:
         P[i,i] = 1
     # Pour un noeud libre, il est relié à 4 noeuds : la possibilité de transitionner sur ces derniers est de 25% chacun
     else:
         P[i, i-1] = 0.25
         P[i, i+1] = 0.25
-        P[i, i-9] = 0.25
-        P[i, i+9] = 0.25
+        P[i, i-n_noeuds_z] = 0.25
+        P[i, i+n_noeuds_z] = 0.25
 
 # Montrer la matrice de probabilitées
 plt.imshow(P, cmap='viridis')
@@ -97,7 +92,7 @@ def chaines_de_Markov(chambre):
     return chambre_pleine
 
 # La chambre a ionisation contenant le potentiel final
-chambre_finale = chaines_de_Markov(chambre)
+chambre_finale = chaines_de_Markov(chambre_plate)
 
 
 # Créer le graphique

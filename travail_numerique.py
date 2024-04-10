@@ -9,8 +9,7 @@ Méthode de relaxation et de sur-relaxation
 '''
 
 
-"Initialisation de la chambre à ionisation"
-# Initialiser la chambre à ionisation : 
+"Initialisation de la chambre à ionisation" 
 # dimensions de 12mm x 3mm pour une moitié (symétrie en ϕ)
 # Un pas de 0,1mm
 r = 30
@@ -19,6 +18,7 @@ chambre_vide = np.zeros((r, z))
 
 
 def applique_CF(chambre, r, z):
+    
 
     # Conditions frontières
     CF_electr_centre = np.zeros(int(5*z/8))
