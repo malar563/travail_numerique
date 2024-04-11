@@ -131,7 +131,7 @@ def methode_de_relax(chambre_vieille, omega = 0):
     # Compter le nombre d'itérations
     n=0
     
-    for iter in range(1200):
+    for iter in range(2200):
         n+=1 
         # Chambre de l'itération suivante
         chambre_nouvelle_petite = decaler_matrices(chambre_vieille)
@@ -175,7 +175,7 @@ def graphique(fonction, chambre_avec_CF, omega=0):
     # Créer le graphique
     plt.imshow(chambre_complete, cmap='viridis', origin='upper', extent=(12,0,-3,3))
     plt.colorbar(label='Potentiel [V]')
-    plt.title('Potentiel dans la chambre à ionisation')
+    # plt.title('Potentiel dans la chambre à ionisation')
     plt.xlabel('z [mm]')
     plt.ylabel('r [mm]')
     plt.show()

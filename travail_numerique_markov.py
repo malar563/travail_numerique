@@ -40,10 +40,10 @@ def applique_CF_aplatie(chambre_plate, r, z):
     CF_cote_lignenoir = (-300*np.ones(z-(r//2)))
     CF_electr_centre = np.zeros(z-((r//2)+1))
     CF_base_bleu = np.zeros(r)
-    CF_electr_centre = np.zeros(int(5*z/9))
+    CF_electr_centre = np.zeros(int(6*z/9))
 
     # Pour l'électrode du centre
-    chambre[(r//2), int(4*z/9):] = CF_electr_centre
+    chambre[(r//2), int(3*z/9):] = CF_electr_centre
 
     # Pour les côtés de la chambre
     CF_cote_lignenoir = (-300*np.ones(z-(r//2)))
@@ -139,10 +139,21 @@ def chaines_de_Markov(chambre):
 # La chambre a ionisation contenant le potentiel final
 chambre_finale = chaines_de_Markov(chambre_plate)
 
+# Trouver la largeur maximale parmi toutes les cellules pour un joli affichage du tableau
+largeur_max = max(max(map(lambda x: len(str(round(x, 3))), row)) for row in chambre_finale)
+
+# Imprimer le tableau du potentiel de chaque case avec des cellules de largeur uniforme
+for ligne in chambre_finale:
+    print("|", end="")
+    for case in ligne:
+        print(f" {str(round(case, 3)).ljust(largeur_max)} |", end="")
+    print("\n" + "-"*(len(ligne)*(largeur_max + 3) + 1))
+
+
 "Potentiel final dans la chambre à ionisation"
 plt.imshow(chambre_finale, cmap='viridis', origin='upper', extent=(12,0,-3,3))
 plt.colorbar(label='Potentiel [V]')
-plt.title('Potentiel dans la chambre à ionisation')
+# plt.title('Potentiel dans la chambre à ionisation')
 plt.xlabel('z [mm]')
 plt.ylabel('r [mm]')
 plt.show()
