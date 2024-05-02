@@ -64,6 +64,7 @@ def applique_CF_aplatie(chambre_plate, r, z):
         chambre[-1*ligne, ((r//2)+1) - ligne] = -300
     chambre[(r//2), 0] = -300
 
+    # Réaplatir la chambre
     return np.ravel(chambre)
 
 
@@ -92,10 +93,10 @@ for i in range(len(chambre_plate)):
         P[i, i+n_noeuds_z] = 0.25
 
 # Montrer la matrice de probabilitées
-plt.imshow(P, cmap='viridis')
-plt.colorbar(label='Probabilité')
-plt.title('Matrice P')
-plt.show()
+# plt.imshow(P, cmap='viridis')
+# plt.colorbar(label='Probabilité')
+# plt.title('Matrice P')
+# plt.show()
 
 
 # Initialiser la liste des plus grandes différences de potentiel entre chaque itération
@@ -116,7 +117,7 @@ def chaines_de_Markov(chambre):
     matrice_precedante= np.ravel(chambre)
 
     n=0
-    for n_iter in range(20):
+    for n_iter in range(500):
         n+=1
         # Multiplier les matrices jusqu'à convergence
         matrice_suivante = np.dot(P, matrice_precedante)
@@ -151,24 +152,86 @@ for ligne in chambre_finale:
 
 
 "Potentiel final dans la chambre à ionisation"
-plt.imshow(chambre_finale, cmap='viridis', origin='upper', extent=(12,0,-3,3))
+# plt.imshow(chambre_finale, cmap='viridis', origin='upper', extent=(12,0,-3,3))
+# plt.colorbar(label='Potentiel [V]')
+# # plt.title('Potentiel dans la chambre à ionisation')
+# plt.xlabel('z [mm]')
+# plt.ylabel('r [mm]')
+# plt.show()
+
+
+"Graphique de la différence du potentiel entre chaque itération en fonction du nombre d'itérations."
+# n_iterations = np.linspace(0, len(liste_diff_Markov), len(liste_diff_Markov))
+# plt.plot(n_iterations, liste_diff_Markov)
+# plt.title("Différence de potentiel entre chaque itération selon le nombre d'itérations")
+# plt.xlabel("Nombre d'itérations")
+# plt.grid(True)
+# plt.ylabel("Différence entre l'itération n et n+1 [V]")
+# plt.yscale("log")
+# plt.show()
+
+
+
+
+
+"""Bonne méthode"""
+
+matrice_P = np.zeros((22,22))
+
+for i in range(8, 22):
+    matrice_P[i, i] = 1
+
+# Haut bas   
+matrice_P[0:8, :] = [[0,1/6,0,0,0,0,0,0,1/6,0,0,0,0,0,4/6,0,0,0,0,0,0,0],
+                     [1/6,0,4/6,0,0,0,0,0,0,1/6,0,0,0,0,0,0,0,0,0,0,0,0],
+                     [0,3/8,0,2/8,0,0,0,0,0,0,0,0,0,0,2/8,0,1/8,0,0,0,0,0],
+                     [0,0,2/8,0,2/8,0,0,0,0,3/8,0,0,0,0,0,0,0,1/8,0,0,0,0],
+                     [0,0,0,2/8,0,2/8,0,0,0,0,3/8,0,0,0,0,0,0,0,1/8,0,0,0],
+                     [0,0,0,0,2/8,0,2/8,0,0,0,0,3/8,0,0,0,0,0,0,0,1/8,0,0],
+                     [0,0,0,0,0,2/8,0,2/8,0,0,0,0,3/8,0,0,0,0,0,0,0,1/8,0],
+                     [0,0,0,0,0,0,2/8,0,0,0,0,0,0,3/8,0,2/8,0,0,0,0,0,1/8]]
+
+# Gauche droite
+matrice_P[0:8, :] = [[0,1/6,0,0,0,0,0,0,1/6,0,0,0,0,0,4/6,0,0,0,0,0,0,0],
+                     [1/6,0,4/6,0,0,0,0,0,0,1/6,0,0,0,0,0,0,0,0,0,0,0,0],
+                     [0,2/8,0,1/8,0,0,0,0,0,0,0,0,0,0,3/8,0,2/8,0,0,0,0,0],
+                     [0,0,3/8,0,1/8,0,0,0,0,2/8,0,0,0,0,0,0,0,2/8,0,0,0,0],
+                     [0,0,0,3/8,0,1/8,0,0,0,0,2/8,0,0,0,0,0,0,0,2/8,0,0,0],
+                     [0,0,0,0,3/8,0,1/8,0,0,0,0,2/8,0,0,0,0,0,0,0,2/8,0,0],
+                     [0,0,0,0,0,3/8,0,1/8,0,0,0,0,2/8,0,0,0,0,0,0,0,2/8,0],
+                     [0,0,0,0,0,0,3/8,0,0,0,0,0,0,2/8,0,1/8,0,0,0,0,0,2/8]]
+
+# print(matrice_P)
+
+# Montrer la matrice de probabilitées
+plt.imshow(matrice_P, cmap='viridis')
+plt.colorbar(label='Probabilité')
+plt.title('Matrice P')
+plt.show()
+
+matrice_Q = matrice_P[0:8,0:8]
+
+matrice_N = np.linalg.inv(np.eye(8,8) - matrice_Q)
+
+matrice_R = matrice_P[0:8,8:22]
+matrice_B = np.dot(matrice_N, matrice_R)
+
+V_noeuds_fixes = np.array([-300,0,0,0,0,0,-300,-300,-300,-300,-300,-300,-300,-300])
+V_noeuds_libres = np.dot(matrice_B,V_noeuds_fixes)
+print(V_noeuds_libres)
+
+# Construire la chambre contenant le potentiel final
+chambre_finale = np.zeros((3,9))
+chambre_finale[0,0] = -300
+chambre_finale[1,1] = -300
+chambre_finale[2, 2:-1] = V_noeuds_fixes[7:-1]
+chambre_finale[0, 1:3] = V_noeuds_libres[0:2]
+chambre_finale[1, 2:-1] = V_noeuds_libres[2:]
+
+chambre_complete = np.concatenate((np.flip(chambre_finale,0)[:-1, :], chambre_finale))
+plt.imshow(chambre_complete, cmap='viridis', origin='upper', extent=(12,0,-3,3))
 plt.colorbar(label='Potentiel [V]')
 # plt.title('Potentiel dans la chambre à ionisation')
 plt.xlabel('z [mm]')
 plt.ylabel('r [mm]')
 plt.show()
-
-
-"Graphique de la différence du potentiel entre chaque itération en fonction du nombre d'itérations."
-n_iterations = np.linspace(0, len(liste_diff_Markov), len(liste_diff_Markov))
-plt.plot(n_iterations, liste_diff_Markov)
-plt.title("Différence de potentiel entre chaque itération selon le nombre d'itérations")
-plt.xlabel("Nombre d'itérations")
-plt.grid(True)
-plt.ylabel("Différence entre l'itération n et n+1 [V]")
-plt.yscale("log")
-plt.show()
-
-
-
-

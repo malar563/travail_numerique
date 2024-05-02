@@ -73,7 +73,7 @@ def decaler_matrices(chambre_vieille):
     V_bas = np.zeros((chambre_vieille.shape[0]+2, chambre_vieille.shape[1]+2))
     V_bas[2:, 1:-1] = chambre_vieille
     # Puisque la chambre est symétrique, il faut rajouter :
-    V_bas[1, 1:-1] = chambre_vieille[1, :]
+    # V_bas[1, 1:-1] = chambre_vieille[1, :]
 
     # Matrice décalée vers la gauche
     V_gauche = np.zeros((chambre_vieille.shape[0]+2, chambre_vieille.shape[1]+2))
@@ -83,11 +83,30 @@ def decaler_matrices(chambre_vieille):
     V_droite = np.zeros((chambre_vieille.shape[0]+2, chambre_vieille.shape[1]+2))
     V_droite[1:-1, 2:] = chambre_vieille
 
+    # Matrice contenant les valeurs de r
+    matrice_r = np.ones(V_droite.shape)
+    for iter in range(0, r+2):
+        matrice_r[iter-1,:] = iter*matrice_r[iter-1,:]
+
+    
     # Le potentiel à l'itération suivante correspond à la moyenne des cases autour
     # Moyenne : addition des 4 matrices et division par 4
-    chambre_nouvelle = (V_haut + V_bas + V_gauche + V_droite)/4
+    chambre_nouvelle = (1*(V_haut-V_bas)/(2*matrice_r) + V_haut + V_bas + V_gauche + V_droite)/4 #LUI CALCULÉ MAIS PAS BEAU
+    chambre_nouvelle = (1*(V_gauche-V_droite)/(2*matrice_r) + V_haut + V_bas + V_gauche + V_droite)/4 #LUI PARFAIT MAIS PAS CA QUON A CALULÉ EN 1
+
+    # r = 0
+    # chambre_nouvelle[1, 1:-1] = (2*chambre_vieille[1, :] + 2*chambre_vieille[0, :])/4 NONNNN
+    # chambre_nouvelle[1, :] = (V_droite[1, :] + V_gauche[1, :] + 2*V_haut[0, :])/4 #VRM MIEUX MAIS PAS PARFAIT (Thomas)
+    # chambre_nouvelle[1, :] = (V_droite[1, :] + V_gauche[1, :] + 4*V_haut[1, :])/6 #En 3d : moyenne des 6 cases autour
+    chambre_nouvelle[1, :] = (2*V_haut[0, :] + 2*V_haut[1, :] + V_droite[1, :] + V_gauche[1, :])/6 #En 3d : Leane ÇA MARCHHHHHEEEEEEEEEEE
+    #chambre_nouvelle[1, 1:-1] = (((1)/(4*1+3))*(2*chambre_vieille[1, :]) + ((2*1+3)/(4*1+3))*chambre_vieille[0, :])
+    #chambre_nouvelle[1, :] = (((1)/(4*1+3))*(V_droite[1, :]) + ((1)/(4*1+3))*(V_gauche[1, :]) + ((2*1+3)/(4*1+3))*V_haut[0, :]) #VRM MIEUX MAIS PAS PARFAIT (Aurélie)
+    #chambre_nouvelle[1, 1:-1] = (2*chambre_vieille[1, :] + 2*chambre_vieille[0, :])/4
+    
     # Restreindre la chambre à sa grandeur d'origine
     chambre_nouvelle_petite = chambre_nouvelle[1:-1, 1:-1]
+
+
 
     return chambre_nouvelle_petite
 
@@ -131,7 +150,7 @@ def methode_de_relax(chambre_vieille, omega = 0):
     # Compter le nombre d'itérations
     n=0
     
-    for iter in range(2200):
+    for iter in range(5000):
         n+=1 
         # Chambre de l'itération suivante
         chambre_nouvelle_petite = decaler_matrices(chambre_vieille)
@@ -232,7 +251,8 @@ def methode_de_surrelax(chambre_vieille, omega):
         
         # Chambre de l'itération suivante
         "ÇA CHANGE ICIIIIIIII PK ÇA MARCHE PAS"
-        chambre_nouvelle_petite = ((1+omega)*decaler_matrices(chambre_vieille)) - (omega*chambre_vieille)
+        chambre_nouvelle_petite = ((1-omega)*chambre_vieille) - ((omega)*decaler_matrices(chambre_vieille))
+        #chambre_nouvelle_petite = ((1+omega)*decaler_matrices(chambre_vieille)) - ((omega)*chambre_vieille)
         
         # Tester la différence entre deux itérations
         plus_grand_pourcent = test_diff(chambre_vieille, chambre_nouvelle_petite)
@@ -254,7 +274,7 @@ def methode_de_surrelax(chambre_vieille, omega):
 
 
 # Graphique produit avec la méthode de sur-relaxation
-graphique(methode_de_surrelax, chambre_avec_CF, 0)
+graphique(methode_de_surrelax, chambre_avec_CF, 0.9981)
 graph_difference(liste_diff_surrelax)
 
 
