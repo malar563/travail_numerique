@@ -2,7 +2,7 @@
 Électromagnétisme - Travail numérique : Un détecteur de radiation
 '''
 '''
-Méthode de relaxation
+Méthode de sur-relaxation
 '''
 '''
 Léane Simard, Marc-Antoine Pelletier et Marylise Larouche
@@ -10,6 +10,7 @@ Léane Simard, Marc-Antoine Pelletier et Marylise Larouche
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from tqdm import tqdm
 
 
 "Initialisation de la chambre à ionisation" 
@@ -47,7 +48,7 @@ def applique_CF(chambre, r, z):
     chambre[:,z-1] = CF_base_bleu
     return chambre
 
-# Chambre initiale contenant les conditions frontières
+# Chambre initiale
 chambre_avec_CF = applique_CF(chambre_vide, r, z)
 
 
@@ -115,56 +116,7 @@ def test_diff(chambre_vieille, chambre_nouvelle):
     return diff_max
 
 
-# Initialiser la liste des plus grandes différences de potentiel entre chaque itération
-liste_diff_relax = []
-
-
-def methode_de_relax(chambre_vieille):
-    """
-    Trouver le potentiel final dans la chambre à ionisation
-
-    Args:
-    chambre_vieille (numpy.ndarray): Chambre initiale où seulement les CF ont été appliquées.
-    omega (float): coefficient entre 0 et 1 permettant de faire converger la solution plus vite.
-
-    Returns:
-    chambre_pleine (numpy.ndarray) : Chambre finale où le potentiel est considéré constant.
-    """
-    # Compter le temps d'éxécution
-    start = time.time()
-
-    # Compter le nombre d'itérations
-    n=0
-
-    # Définition du critère d'arrêt
-    plus_grand_diff = 300
-    
-    while plus_grand_diff > 0.01 and n < 5000:
-        n+=1
-
-        # Chambre de l'itération suivante
-        chambre_nouvelle_petite = decaler_matrices(chambre_vieille)
-        
-        # Tester la différence entre deux itérations
-        plus_grand_diff = test_diff(chambre_vieille, chambre_nouvelle_petite)
-        liste_diff_relax.append(plus_grand_diff)
-
-        # Réimposer les CF à la chambre
-        chambre_vieille = applique_CF(chambre_nouvelle_petite, r, z)
-
-    # Pour ce qui ne fait pas partie de la chambre, le potentiel est nul
-    chambre_pleine = chambre_vieille
-    for case in range(r-1):
-        chambre_pleine[case+1, :case+1] = 0
-
-    # Temps d'éxécution de la méthode de relaxation
-    temps_methode_de_relax = time.time()
-    print(f"Méthode de relaxation :\nTemps d'exécution = {round(temps_methode_de_relax-start, 4)} secondes \nNombre d'itérations = {n}")
-
-    return chambre_pleine
-
-
-def graphique(fonction, chambre_avec_CF):
+def graphique(fonction, chambre_avec_CF, omega=0):
     """
     Créer la représentation du potentiel final dans la chambre à ionisation
 
@@ -178,13 +130,13 @@ def graphique(fonction, chambre_avec_CF):
     """
 
     # Créer la chambre complète (symétrie)
-    fct = fonction(chambre_avec_CF)
+    fct = fonction(chambre_avec_CF, omega)[0]
     chambre_complete = np.concatenate((np.flip(fct, 0)[:-1, :], fct))
 
     # Créer le graphique
     plt.imshow(chambre_complete, cmap='viridis', origin='upper', extent=(12,0,-3,3))
     plt.colorbar(label='Potentiel [V]')
-    plt.title('Potentiel dans la chambre à ionisation')
+    # plt.title('Potentiel dans la chambre à ionisation')
     plt.xlabel('z [mm]')
     plt.ylabel('r [mm]')
     plt.show()
@@ -212,14 +164,68 @@ def graph_difference(liste_diff):
     plt.show()
 
 
-# Afficher le potentiel final dans la chambre à ionisation
-chambre_complete = graphique(methode_de_relax, chambre_avec_CF)
-
-# Afficher le graphique de la différence du potentiel entre deux itérations selon le nombre d'itérations
-graph_difference(liste_diff_relax)
+# Initialiser la liste des plus grandes différences de potentiel entre chaque itération
+liste_diff_surrelax = []
 
 
+def methode_de_surrelax(chambre_vieille, omega):
+    # Calculer le temps d'éxécution
+    start = time.time()
+    # Compter le nombre d'itérations
+    n=0
+
+    # Définir un critère d'arrêt
+    plus_grand_diff = 300
+    
+    while plus_grand_diff > 0.01 and n<5000:
+        n+=1
+        
+        # Chambre de l'itération suivante
+        chambre_nouvelle_petite = ((1-omega)*decaler_matrices(chambre_vieille)) + ((omega)*chambre_vieille)
+        
+        # Tester la différence entre deux itérations
+        plus_grand_diff = test_diff(chambre_vieille, chambre_nouvelle_petite)
+        liste_diff_surrelax.append(plus_grand_diff)
+
+        # Réimposer les CF
+        chambre_vieille = applique_CF(chambre_nouvelle_petite, r, z)
+
+    # Donner la bonne forme à la chambre
+    chambre_pleine = chambre_vieille
+    for case in range(r-1):
+        chambre_pleine[case+1, :case+1] = 0
+
+    # Temps d'éxécution de la méthode de relaxation
+    temps_methode_de_surrelax = time.time()
+    #print(f"Méthode de sur-relaxation :\nTemps d'exécution = {round(temps_methode_de_surrelax-start, 4)} secondes \nNombre d'itérations = {n}")
+
+    return chambre_pleine, n, round(temps_methode_de_surrelax-start, 4)
 
 
+# Test de convergence en fonction de omega
+liste_omega = np.linspace(0,0.005,1) # Pour les test de convergence en fonction de omega, nous avions mis 1000 ici
+liste_iterations = []
+liste_temps = []
+# On teste différentes valeurs de omega et on regarde le temps et le nombre d'itération nécessaire pour que la différence entre deux itérations soit de 0.01V
+for i in tqdm(range(len(liste_omega))):
+    chambre, nb_iter, temps = methode_de_surrelax(chambre_avec_CF, liste_omega[i])
+    liste_iterations.append(nb_iter)
+    liste_temps.append(temps)
 
+# Générer les graphiques pour les tests de convergence
+plt.plot(liste_omega, liste_iterations)
+plt.xlabel(r"$\omega$", fontsize=15)
+plt.ylabel("Nombre d'itérations", fontsize=15)
+plt.show()
+plt.plot(liste_omega, liste_temps)
+plt.xlabel(r"$\omega$", fontsize=15)
+plt.ylabel("Temps de convergence", fontsize=15)
+plt.show()
 
+# Graphique produit avec la méthode de sur-relaxation
+liste_diff_surrelax = []
+# Afficher la chambre finale lorsque la valeur de omega est de 0.0015
+graphique(methode_de_surrelax, chambre_avec_CF, 0.0015)
+
+# Afficher le graphique de la différence de potentiel entre une itération et la suivante
+graph_difference(liste_diff_surrelax)
